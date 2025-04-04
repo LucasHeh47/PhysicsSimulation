@@ -127,4 +127,8 @@ public class Window extends Canvas implements Runnable {
 		return this.resolution;
 	}
 
+	public JFrame getFrame() {
+		return frame;
+	}
+
 }

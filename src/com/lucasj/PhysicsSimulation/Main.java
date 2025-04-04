@@ -27,3 +27,16 @@ public class Main {
 	
 
 }
+
+/*
+ *
+ * To do:
+ * 
+ * Larger masses attract smaller masses
+ * Finish user controlled force
+ * Refine collisions
+ * Optimize
+ * Color & Graphics
+ * 
+ * 
+*/
