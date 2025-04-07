@@ -19,7 +19,7 @@ public class Particle {
 	private final int floor;
 	private final int right_wall;
 	
-	private int size = 32;
+	private int size = Simulation.DEFAULT_PARTICLE_SIZE;
 	
 	private boolean onGround = false;
 	
@@ -45,7 +45,11 @@ public class Particle {
 	}
 	
 	public void update(double deltaTime) {
-		if(isUserControlled) return;
+		if(isUserControlled) {
+			this.velocity = Vector2D.zero();
+			this.acceleration = Vector2D.zero();
+			return;
+		}
 //		Debug.Log(this, "Location: " + this.location);
 //		Debug.Log(this, "Velocity: " + this.velocity);
 //		Debug.Log(this, "Acceleration: " + this.acceleration);
@@ -98,15 +102,20 @@ public class Particle {
 		this.velocity.setX(this.velocity.getX() * (1-Simulation.FRICTION));
 	}
 	
+	// Collision between different particles
 	public void checkCollision(Particle other) {
 	    // Avoid self-collision
 	    if (this == other) return;
 
+	    // Difference in location
+	    // p2 - p1
 	    Vector2D locDiff = other.getLocation().subtract(this.location);
+	    // sqrt(x^2 + y^2)
 	    double distance = locDiff.magnitude();
+	    // Minimum distance to "collide" with x being diameter of particle
+	    // x1/2.0 + x2/2.0
 	    double minDistance = this.size/2.0 + other.size/2.0;
 
-	    // Only process collision if particles are overlapping
 	    if (distance < minDistance && distance > 0.0001) {
 	        // Normalized collision normal (points from this to other)
 	        Vector2D collisionNormal = locDiff.divide(distance);
@@ -116,43 +125,34 @@ public class Particle {
 	        Vector2D separation = collisionNormal.multiply(overlap * 0.5);
 	        this.location = this.location.subtract(separation);
 	        other.location = other.location.add(separation);
+
+	        // Masses
+	        double m1 = this.size;
+	        double m2 = other.getSize();
 	        
+	        double e = Simulation.ELASTICITY;
 	        
-	        // Swap velocities with elasticity penalty
-	        /* Note: Over simplified. Later can be changed from a simple velocity swap
-	         * to a impulse calculation such as
+	        /* 
 	         * j = (-1(1 + e) * (Vrel * n)) / ((1/m1) + (1/m2))
 	         * with m being the size of the object for now (maybe a color later on)
 	         */
-	       
-	        // V1:
 	        
-	        Vector2D tempVel = this.velocity;
-	        this.velocity = other.velocity.multiply(1-Simulation.ELASTICITY);
-	        other.velocity = tempVel.multiply(1-Simulation.ELASTICITY);
+	        // Something aint right and idk what
+//	        
+	        // Vrel (Relative Velocity)
+	        Vector2D relativeVelocity = this.velocity.subtract(other.getVelocity());
+	        double velocityAmongNormal = relativeVelocity.dot(collisionNormal);
 	        
-	        // V2: ( Something aint right and idk what )
-	       
-//	        // Masses
-//	        double m1 = this.size;
-//	        double m2 = other.getSize();
-//	        
-//	        // Vrel (Relative Velocity)
-//	        Vector2D relativeVelocity = this.velocity.subtract(other.getVelocity());
-//	        double velocityAmongNormal = relativeVelocity.dot(collisionNormal);
-//	        
-//	        // Only apply impulse if particles are moving towards each other
-//	        if (velocityAmongNormal > 0) return;
-//	        
-//	        // e (elasticity)
-//	        double e = Simulation.ELASTICITY;
-//	        // impulse scalar using formula above
-//	        double j = -(1 + e) * velocityAmongNormal / ((1 / m1) + (1 / m2));
-//	        j *= 1.2;
-//	        // impulse vector
-//	        Vector2D impulse = collisionNormal.multiply(j);
-//	        this.velocity = this.velocity.add(impulse.divide(m1));
-//	        other.velocity = other.velocity.subtract(impulse.divide(m2));
+	        // Only apply impulse if particles are moving towards each other
+	        if (velocityAmongNormal >= 0) return;
+	        
+	        // impulse scalar using formula above
+	        double j = -(1 + e) * velocityAmongNormal / ((1 / m1) + (1 / m2));
+	        // impulse vector
+	        Vector2D impulse = collisionNormal.multiply(j);
+	        
+	        this.velocity = this.velocity.add(impulse.divide(m1));
+	        other.velocity = other.velocity.subtract(impulse.divide(m2));
 	    }
 	}
 	

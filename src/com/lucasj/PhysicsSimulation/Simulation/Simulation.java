@@ -2,34 +2,36 @@ package com.lucasj.PhysicsSimulation.Simulation;
 
 import java.awt.Dimension;
 import java.awt.Graphics2D;
-import java.awt.Point;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 
 import com.lucasj.PhysicsSimulation.Input.MouseHandler;
+import com.lucasj.PhysicsSimulation.Math.Quadtree;
+import com.lucasj.PhysicsSimulation.Math.Rectangle;
 import com.lucasj.PhysicsSimulation.Math.Vector2D;
 import com.lucasj.PhysicsSimulation.UI.Window;
 
 public class Simulation {
 	private Window window;
 	
-	public int population = 200;
+	public int population = 1000;
 	
-	// Instead of using an ArrayList for computations, i will use a Quadtree structure
+	// Instead of using an ArrayList for computations or a grid structure, i will use a Quadtree structure
 	private List<Particle> particles;
-	final int cellSize = 64;
+	private Quadtree quadtree;
 	
-	private Map<Point, List<Particle>> grid;
+	//final int cellSize = 64;
 	
+	//private Map<Point, List<Particle>> grid;
+	
+	public static final int DEFAULT_PARTICLE_SIZE = 12;
 	public static final float ACCELERATION_GRAVITY = 9.81f;
-	public static final float ELASTICITY = 0.1f; // (No energy loss) 0 - 1 (immediate energy loss)
+	public static final float ELASTICITY = 1f; // (No energy loss) 0 - 1 (immediate energy loss)
 	public static final float FRICTION = 0.1f;
 	
 	// Fun constant to speed things up
-	public static final float SPEED_MULTIPLIER = 5.0f;
+	public static final float SPEED_MULTIPLIER = 1.0f;
 	
 	private Vector2D inputForce;
 	private MouseHandler mouseHandler;
@@ -46,80 +48,45 @@ public class Simulation {
 		mouseHandler = new MouseHandler(this);
 		window.addMouseMotionListener(mouseHandler);
 		window.addMouseListener(mouseHandler);
-		grid = new HashMap<>();
+		
+		//grid = new HashMap<>();
 	}
 	
 	public void update(double deltaTime) {
 		
-		grid.clear();
 		this.deltaTime = deltaTime;
 		
-		// grid data structure with cell coordinates to compute particles near each other
+		Dimension res = window.getResolution();
+		
+		Vector2D center = new Vector2D(res.width /2.0, res.getHeight() / 2.0);
+		Rectangle boundary = new Rectangle(center, res.width / 2.0, res.height / 2.0);
+		int capacity = 4;
+		quadtree = new Quadtree(this, boundary, capacity);
+		
 		for (Particle p : particles) {
 			p.update(deltaTime);
-		    int cellX = (int) (p.getLocation().getX() / cellSize);
-		    int cellY = (int) (p.getLocation().getY() / cellSize);
-		    Point cell = new Point(cellX, cellY);
-		    
-		    grid.computeIfAbsent(cell, k -> new ArrayList<>()).add(p);
+			quadtree.insert(p);
 		}
 		
-		// each cell; check collisions only within the cell and cells bordering
-		for (Map.Entry<Point, List<Particle>> entry : grid.entrySet()) {
-	        Point cell = entry.getKey();
-	        List<Particle> cellParticles = entry.getValue();
-	        
-	        // Check collisions within the cell
-	        checkCollisions(cellParticles);
-	        
-	        // Only check 4 of the 8 adjacent cells to avoid duplicate checks
-	        // (right, bottom, bottom-right, bottom-left)
-	        Point[] neighborsToCheck = {
-	            new Point(cell.x + 1, cell.y),     // right
-	            new Point(cell.x, cell.y + 1),     // bottom
-	            new Point(cell.x + 1, cell.y + 1),  // bottom-right
-	            new Point(cell.x - 1, cell.y + 1)   // bottom-left
-	        };
-	        
-	        for (Point neighbor : neighborsToCheck) {
-	            List<Particle> neighborParticles = grid.get(neighbor);
-	            if (neighborParticles != null) {
-	                checkCollisionsBetween(cellParticles, neighborParticles);
-	            }
-	        }
-	    }
-	}
-	
-	private void checkCollisions(List<Particle> particles) {
-	    int n = particles.size();
-	    for (int i = 0; i < n; i++) {
-	        Particle p1 = particles.get(i);
-	        for (int j = i + 1; j < n; j++) {
-	            Particle p2 = particles.get(j);
-	            // Add distance check first for early rejection
-	            double dist = p1.getLocation().distanceTo(p2.getLocation());
-	            double minDist = (p1.getSize() + p2.getSize()) / 2.0;
-	            if (dist * dist < minDist * minDist) {
-	                p1.checkCollision(p2);
-	            }
-	        }
-	    }
-	}
-	
-	private void checkCollisionsBetween(List<Particle> list1, List<Particle> list2) {
-	    for (Particle p1 : list1) {
-	        for (Particle p2 : list2) {
-	            // Add distance check first for early rejection
-	            double dist = p1.getLocation().distanceTo(p2.getLocation());
-	            double minDist = (p1.getSize() + p2.getSize()) / 2.0;
-	            if (dist * dist < minDist * minDist) {
-	                p1.checkCollision(p2);
-	            }
-	        }
-	    }
+		for (Particle p : particles) {
+			double range = p.getSize();
+			Rectangle rangeRect = new Rectangle(p.getLocation(), range, range);
+			List<Particle> candidates = quadtree.query(rangeRect);
+			
+			for(Particle other : candidates) {
+				if(p != other) {
+					double dist = p.getLocation().distanceTo(other.getLocation());
+					double minDist = (p.getSize() + other.getSize()) / 2.0;
+					if(dist * dist < minDist * minDist) {
+						p.checkCollision(other);
+					}
+				}
+			}
+		}
 	}
 	
 	public void render(Graphics2D g2d) {
+		quadtree.render(g2d);
 		for(Particle particle: particles) {
 			particle.render(g2d);
 		}

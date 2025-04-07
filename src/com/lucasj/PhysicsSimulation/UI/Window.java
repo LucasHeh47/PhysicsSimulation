@@ -20,7 +20,7 @@ public class Window extends Canvas implements Runnable {
 	private Dimension resolution;
 	
 	private boolean isRunning;
-	private int fpslimit = 60; // Limits frames per second to 60
+	private int fpslimit = 260; // Limits frames per second to 60
 	private int currentFPS;
 	
 	private Thread thread;
@@ -30,7 +30,7 @@ public class Window extends Canvas implements Runnable {
 	public Window() {
 		frame = new JFrame();
 		// Default window size 1920x1080
-		resolution = new Dimension(1920, 1080);
+		resolution = new Dimension(1080, 1080);
 		setPreferredSize(resolution);
 		frame.setMinimumSize(resolution);
 		frame.add(this);

@@ -32,6 +32,9 @@ public class Main {
  *
  * To do:
  * 
+ * Barnes-Hut Simulation
+ * Quadtree
+ * 
  * Larger masses attract smaller masses
  * Finish user controlled force
  * Refine collisions
