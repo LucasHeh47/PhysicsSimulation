@@ -57,7 +57,6 @@ public class Particle {
 		if(!onGround) {
 			this.velocity = this.velocity.add(acceleration);
 		} else {
-			this.velocity = Vector2D.zero();
 			applyFriction();
 			//Debug.Log(this, "GROUNDED: " + this.location);
 			return;
@@ -68,7 +67,7 @@ public class Particle {
 		if(location.getYint() + size >= floor) {
 		    location.setY(floor - size);
 		    applyFriction();
-			this.velocity.setY(this.velocity.getY() * -1 + Simulation.ELASTICITY);
+			this.velocity.setY(this.velocity.getY() * -1.0 * Simulation.ELASTICITY);
 		}
 		// bounce downward when hitting ceiling
 		if(location.getYint() <= 0) {
@@ -122,18 +121,18 @@ public class Particle {
 
 	        // Separate the particles (push them apart)
 	        double overlap = minDistance - distance;
-	        Vector2D separation = collisionNormal.multiply(overlap * 0.5);
+	        Vector2D separation = collisionNormal.multiply(overlap);
 	        this.location = this.location.subtract(separation);
 	        other.location = other.location.add(separation);
 
 	        // Masses
-	        double m1 = this.size;
-	        double m2 = other.getSize();
+	        double m1 = this.size * 5;
+	        double m2 = other.getSize() * 5;
 	        
 	        double e = Simulation.ELASTICITY;
 	        
 	        /* 
-	         * j = (-1(1 + e) * (Vrel * n)) / ((1/m1) + (1/m2))
+	         * j = (-1(1 + e) * (Vrel) / ((1/m1) + (1/m2))
 	         * with m being the size of the object for now (maybe a color later on)
 	         */
 	        
@@ -147,12 +146,16 @@ public class Particle {
 	        if (velocityAmongNormal >= 0) return;
 	        
 	        // impulse scalar using formula above
-	        double j = -(1 + e) * velocityAmongNormal / ((1 / m1) + (1 / m2));
+	        // Changing formula from 1+e to e seemed to help
+	        double j = -((e) * velocityAmongNormal / ((1 / m1) + (1 / m2)));
 	        // impulse vector
 	        Vector2D impulse = collisionNormal.multiply(j);
 	        
-	        this.velocity = this.velocity.add(impulse.divide(m1));
-	        other.velocity = other.velocity.subtract(impulse.divide(m2));
+	        // Problem with colliding; particles were not bouncing off each other but rather sort of "going around each other"
+	        // multiplying by -1 seemed to help
+	        this.velocity = this.velocity.add(impulse.divide(m1)).multiply(-1);
+	        other.velocity = other.velocity.subtract(impulse.divide(m2)).multiply(-1);
+	        Debug.Log(this, this.velocity.toString());
 	    }
 	}
 	

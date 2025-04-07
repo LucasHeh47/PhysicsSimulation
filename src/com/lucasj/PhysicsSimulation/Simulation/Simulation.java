@@ -15,7 +15,7 @@ import com.lucasj.PhysicsSimulation.UI.Window;
 public class Simulation {
 	private Window window;
 	
-	public int population = 1000;
+	public int population = 15;
 	
 	// Instead of using an ArrayList for computations or a grid structure, i will use a Quadtree structure
 	private List<Particle> particles;
@@ -25,10 +25,10 @@ public class Simulation {
 	
 	//private Map<Point, List<Particle>> grid;
 	
-	public static final int DEFAULT_PARTICLE_SIZE = 12;
+	public static final int DEFAULT_PARTICLE_SIZE = 32;
 	public static final float ACCELERATION_GRAVITY = 9.81f;
-	public static final float ELASTICITY = 1f; // (No energy loss) 0 - 1 (immediate energy loss)
-	public static final float FRICTION = 0.1f;
+	public static final float ELASTICITY = 0.9f; // (No energy loss) 0 - 1 (immediate energy loss)
+	public static final float FRICTION = 0.05f;
 	
 	// Fun constant to speed things up
 	public static final float SPEED_MULTIPLIER = 1.0f;
@@ -86,7 +86,7 @@ public class Simulation {
 	}
 	
 	public void render(Graphics2D g2d) {
-		quadtree.render(g2d);
+		//quadtree.render(g2d);
 		for(Particle particle: particles) {
 			particle.render(g2d);
 		}
@@ -98,7 +98,7 @@ public class Simulation {
 		for (int i = 0; i <= amount; i++) {
 			// Creates a new particle at a random location on the window
 			Particle particle = new Particle(this, new Vector2D(rand.nextInt((int)window.getResolution().getWidth()), rand.nextInt((int)window.getResolution().getHeight())));
-			particle.setVelocity(new Vector2D(rand.nextInt(0, 100), 0));
+			particle.setVelocity(new Vector2D(rand.nextInt(0, 1000), 0));
 			particle.setId(i);
 			particles.add(particle);
 		}
