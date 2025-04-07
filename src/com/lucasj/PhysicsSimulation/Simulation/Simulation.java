@@ -26,6 +26,7 @@ public class Simulation {
 	//private Map<Point, List<Particle>> grid;
 	
 	public static final int DEFAULT_PARTICLE_SIZE = 32;
+	public static boolean GRAVITY = false;
 	public static final float ACCELERATION_GRAVITY = 9.81f;
 	public static final float ELASTICITY = 0.9f; // (No energy loss) 0 - 1 (immediate energy loss)
 	public static final float FRICTION = 0.05f;
@@ -100,6 +101,7 @@ public class Simulation {
 			Particle particle = new Particle(this, new Vector2D(rand.nextInt((int)window.getResolution().getWidth()), rand.nextInt((int)window.getResolution().getHeight())));
 			particle.setVelocity(new Vector2D(rand.nextInt(0, 1000), 0));
 			particle.setId(i);
+			particle.setMass(rand.nextInt(1, 1000));
 			particles.add(particle);
 		}
 	}

@@ -5,6 +5,7 @@ import java.awt.Graphics2D;
 
 import com.lucasj.PhysicsSimulation.Debug;
 import com.lucasj.PhysicsSimulation.Math.Vector2D;
+import com.lucasj.PhysicsSimulation.Utils.ColorInterpolation;
 
 public class Particle {
 
@@ -20,6 +21,7 @@ public class Particle {
 	private final int right_wall;
 	
 	private int size = Simulation.DEFAULT_PARTICLE_SIZE;
+	private int mass = 10;
 	
 	private boolean onGround = false;
 	
@@ -53,7 +55,7 @@ public class Particle {
 //		Debug.Log(this, "Location: " + this.location);
 //		Debug.Log(this, "Velocity: " + this.velocity);
 //		Debug.Log(this, "Acceleration: " + this.acceleration);
-		applyGravity();
+		if(Simulation.GRAVITY) applyGravity();
 		if(!onGround) {
 			this.velocity = this.velocity.add(acceleration);
 		} else {
@@ -71,12 +73,12 @@ public class Particle {
 		}
 		// bounce downward when hitting ceiling
 		if(location.getYint() <= 0) {
-			location.setY(0+size);
+			location.setY(1);
 			this.velocity.setY(this.velocity.getY() * -1);
 		}
 		// bounce off walls
 		if(location.getXint() <= 0) {
-			location.setX(0);
+			location.setX(1);
 			this.velocity.setX(this.velocity.getX() * -1);
 		}
 		if(location.getXint() >= right_wall-size) {
@@ -86,7 +88,7 @@ public class Particle {
 	}
 	
 	public void render(Graphics2D g2d) {
-		g2d.setColor(Color.blue);
+		g2d.setColor(ColorInterpolation.getInterpolatedColor(mass));
 		if(isUserControlled) {
 			g2d.setColor(new Color(0, 0, 255, 30));
 		}
@@ -126,8 +128,8 @@ public class Particle {
 	        other.location = other.location.add(separation);
 
 	        // Masses
-	        double m1 = this.size * 5;
-	        double m2 = other.getSize() * 5;
+	        double m1 = this.mass;
+	        double m2 = other.getMass();
 	        
 	        double e = Simulation.ELASTICITY;
 	        
@@ -143,7 +145,7 @@ public class Particle {
 	        double velocityAmongNormal = relativeVelocity.dot(collisionNormal);
 	        
 	        // Only apply impulse if particles are moving towards each other
-	        if (velocityAmongNormal >= 0) return;
+	        if (velocityAmongNormal <= 0) return;
 	        
 	        // impulse scalar using formula above
 	        // Changing formula from 1+e to e seemed to help
@@ -154,7 +156,7 @@ public class Particle {
 	        // Problem with colliding; particles were not bouncing off each other but rather sort of "going around each other"
 	        // multiplying by -1 seemed to help
 	        this.velocity = this.velocity.add(impulse.divide(m1)).multiply(-1);
-	        other.velocity = other.velocity.subtract(impulse.divide(m2)).multiply(-1);
+	        other.velocity = other.velocity.subtract(impulse.divide(m2)).multiply(1);
 	        Debug.Log(this, this.velocity.toString());
 	    }
 	}
@@ -201,6 +203,14 @@ public class Particle {
 
 	public void setId(long id) {
 		this.id = id;
+	}
+
+	public int getMass() {
+		return mass;
+	}
+
+	public void setMass(int mass) {
+		this.mass = mass;
 	}
 	
 }
