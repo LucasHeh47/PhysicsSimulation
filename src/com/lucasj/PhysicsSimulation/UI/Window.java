@@ -33,7 +33,7 @@ public class Window extends Canvas implements Runnable {
 	public Window() {
 		frame = new JFrame();
 		// Default window size 1920x1080
-		resolution = new Dimension(1080, 1080);
+		resolution = new Dimension(2000, 1080);
 		setPreferredSize(resolution);
 		frame.setMinimumSize(resolution);
 		frame.add(this);

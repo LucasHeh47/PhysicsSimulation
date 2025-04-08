@@ -137,4 +137,5 @@ public class Vector2D {
 	public Vector2D divide(Vector2D dividend) {
 		return new Vector2D(this.x / dividend.x, this.y / dividend.y);
 	}
+	
 }

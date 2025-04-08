@@ -1,9 +1,11 @@
 package com.lucasj.PhysicsSimulation.Simulation;
 
-import java.awt.Color;
 import java.awt.Graphics2D;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.lucasj.PhysicsSimulation.Debug;
+import com.lucasj.PhysicsSimulation.Math.Rectangle;
 import com.lucasj.PhysicsSimulation.Math.Vector2D;
 import com.lucasj.PhysicsSimulation.Utils.ColorInterpolation;
 
@@ -25,7 +27,7 @@ public class Particle {
 	
 	private boolean onGround = false;
 	
-	private boolean isUserControlled = false; // Only needed for mouse force
+	private List<Particle> neighbors;
 	
 	public Particle(Simulation sim, Vector2D loc) {
 		this.sim = sim;
@@ -47,15 +49,11 @@ public class Particle {
 	}
 	
 	public void update(double deltaTime) {
-		if(isUserControlled) {
-			this.velocity = Vector2D.zero();
-			this.acceleration = Vector2D.zero();
-			return;
-		}
 //		Debug.Log(this, "Location: " + this.location);
 //		Debug.Log(this, "Velocity: " + this.velocity);
 //		Debug.Log(this, "Acceleration: " + this.acceleration);
 		if(Simulation.GRAVITY) applyGravity();
+		if(Simulation.BOIDS_FLOCKING_ALGORITHM) applyBoidsFlockingAlgorithm();
 		if(!onGround) {
 			this.velocity = this.velocity.add(acceleration);
 		} else {
@@ -89,18 +87,129 @@ public class Particle {
 	
 	public void render(Graphics2D g2d) {
 		g2d.setColor(ColorInterpolation.getInterpolatedColor(mass));
-		if(isUserControlled) {
-			g2d.setColor(new Color(0, 0, 255, 30));
-		}
 		g2d.fillOval(location.getXint(), location.getYint(), size, size);
 	}
 	
+	private void applyBoidsFlockingAlgorithm() {
+		// Particles are already being seperated upon collisions
+		
+		// If simulation is disabled, the neighbors list hasnt been created yet
+		if(!Simulation.GRAVITY) {
+			float radius = Simulation.CENTER_OF_MASS_RADIUS;
+			Rectangle queryRect = new Rectangle(this.getLocation(), radius, radius);
+			
+			List<Particle> candidates = sim.getQuadtree().query(queryRect);
+			
+			List<Particle> particlesWithinRadius = new ArrayList<>();
+			for (Particle p : candidates) {
+				if(this.location.distanceTo(p.getLocation()) <= radius) {
+					particlesWithinRadius.add(p);
+				}
+			}
+			this.neighbors = particlesWithinRadius;
+		}
+		
+		Vector2D alignment = Vector2D.zero();
+		Vector2D cohesion = Vector2D.zero();
+		
+		int countAlignment = 0;
+		for(Particle other : neighbors) {
+			if(other == this) return;
+			double distance = this.location.distanceTo(other.getLocation());
+			
+			alignment = alignment.add(other.velocity);
+			cohesion = cohesion.add(other.location);
+			
+			countAlignment++;
+		}
+		
+		if(countAlignment > 0) {
+			alignment = alignment.multiply(1.0 / countAlignment);
+			double magnitudeScaleFactor = 1000 / alignment.magnitude();
+			alignment = alignment.multiply(magnitudeScaleFactor);
+			
+			alignment = alignment.subtract(this.velocity);
+			
+			cohesion = cohesion.multiply(1.0 / countAlignment);
+			cohesion = cohesion.subtract(this.location);
+			magnitudeScaleFactor = 1000 / cohesion.magnitude();
+			cohesion = cohesion.multiply(magnitudeScaleFactor);
+			cohesion = cohesion.subtract(this.velocity);
+			
+		}
+		
+		Vector2D accelerationForce = alignment.multiply(200).add(cohesion.multiply(100));
+		
+		applyForce(accelerationForce);
+		
+		
+	}
+	
 	private void applyGravity() {
-		this.velocity = this.velocity.add(new Vector2D(0, Simulation.ACCELERATION_GRAVITY));
+		this.velocity = this.velocity.add(new Vector2D(0, Simulation.ACCELERATION_GRAVITY_DOWNWARD * sim.getDeltaTime()));
+
+		// Center of mass based off a radius of X from the particle
+		float radius = Simulation.CENTER_OF_MASS_RADIUS;
+		Rectangle queryRect = new Rectangle(this.getLocation(), radius, radius);
+		
+		List<Particle> candidates = sim.getQuadtree().query(queryRect);
+		
+		List<Particle> particlesWithinRadius = new ArrayList<>();
+		for (Particle p : candidates) {
+			if(this.location.distanceTo(p.getLocation()) <= radius) {
+				particlesWithinRadius.add(p);
+			}
+		}
+		this.neighbors = particlesWithinRadius;
+		
+		double totalMass = 0.0;
+		Vector2D weightedPosition = Vector2D.zero();
+		
+		for (Particle p : particlesWithinRadius) {
+			double mass = p.getMass();
+			totalMass += mass;
+			weightedPosition = weightedPosition.add(p.getLocation().multiply(mass));
+		}
+		
+		if(totalMass == 0.0) {
+			return;
+		}
+		
+		Vector2D localCenterOfMass = weightedPosition.multiply(1.0 / totalMass);
+		
+		//Vector2D direction = this.location.subtract(localCenterOfMass);
+		Vector2D direction = localCenterOfMass.subtract(this.location);
+		
+		if(direction.magnitude() > 0) {
+			Vector2D pullDirection = direction.normalize();
+			double pullStrength = Simulation.ACCELERATION_GRAVITY_TOWARD_LARGER_MASSES;
+			Vector2D pullForce = pullDirection.multiply(pullStrength);
+			this.velocity = this.velocity.add(pullForce);
+		}
+		
+		
+		// User controlled
+		if(sim.getInputForce().getX() != -1) {
+			if(sim.getMouseHandler().pullOrPush) {
+				direction = sim.getInputForce().subtract(this.location);
+			} else {
+				direction = this.location.subtract(sim.getInputForce());
+			}
+			Vector2D pullDirection = direction.normalize();
+			double pullStrength = Simulation.USER_CONTROLLED_POWER;
+			Vector2D pullForce = pullDirection.multiply(pullStrength);
+			this.velocity = this.velocity.add(pullForce);
+		}
 	}
 	
 	private void applyFriction() {
 		this.velocity.setX(this.velocity.getX() * (1-Simulation.FRICTION));
+	}
+	
+	private void applyForce(Vector2D force) {
+	    Vector2D acceleration = force.divide(mass); // F = ma, a = F/m
+	    velocity = velocity.add(acceleration.multiply(sim.getDeltaTime()));
+		
 	}
 	
 	// Collision between different particles
@@ -157,7 +266,6 @@ public class Particle {
 	        // multiplying by -1 seemed to help
 	        this.velocity = this.velocity.add(impulse.divide(m1)).multiply(-1);
 	        other.velocity = other.velocity.subtract(impulse.divide(m2)).multiply(1);
-	        Debug.Log(this, this.velocity.toString());
 	    }
 	}
 	
@@ -187,14 +295,6 @@ public class Particle {
 	
 	public int getSize() {
 		return this.size;
-	}
-
-	public boolean isUserControlled() {
-		return isUserControlled;
-	}
-
-	public void setUserControlled(boolean isUserControlled) {
-		this.isUserControlled = isUserControlled;
 	}
 
 	public long getId() {

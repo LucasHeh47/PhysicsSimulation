@@ -5,6 +5,7 @@ import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.lucasj.PhysicsSimulation.Debug;
 import com.lucasj.PhysicsSimulation.Simulation.Particle;
 import com.lucasj.PhysicsSimulation.Simulation.Simulation;
 
@@ -18,6 +19,10 @@ public class Quadtree {
 	private List<Particle> particles;
 	private boolean subdivided;
 	
+	// Masses
+	private Vector2D centerOfMass;
+	private double totalMass;
+	
     // Child nodes
     private Quadtree northEast;
     private Quadtree northWest;
@@ -28,6 +33,8 @@ public class Quadtree {
 		this.sim = sim;
 		this.boundary = boundary;
 		this.capacity = capacity;
+		this.centerOfMass = Vector2D.zero();
+		this.totalMass = 0;
 		this.particles = new ArrayList<>();
 		this.subdivided = false;
 	}
@@ -68,6 +75,14 @@ public class Quadtree {
 		northWest = new Quadtree(sim, nw, capacity);
 		southEast = new Quadtree(sim, se, capacity);
 		southWest = new Quadtree(sim, sw, capacity);
+		
+		for (Particle p : particles) {
+			northEast.insert(p);
+			northWest.insert(p);
+			southEast.insert(p);
+			southWest.insert(p);
+		}
+		particles.clear();
 		
 		subdivided = true;
 	}
@@ -111,5 +126,56 @@ public class Quadtree {
 			g2d.setColor(Color.black);
 			g2d.drawRect(x - hw, y-hw, hw*2, hh*2);
 		}
+	}
+	
+	/*
+	 * Re do all center of mass calculations to change a particles velocity based on masses near the particles instead of the average center of mass of whole simulation
+	 */
+	public void calculateCenterOfMass() {
+		double massSum = 0.0;
+		Vector2D weightedPosition = Vector2D.zero();
+		
+		if (subdivided) {
+			northEast.calculateCenterOfMass();
+			northWest.calculateCenterOfMass();
+			southEast.calculateCenterOfMass();
+			southWest.calculateCenterOfMass();
+			
+//            if (northEast.totalMass > 0) {
+//                massSum += northEast.totalMass;
+//                weightedPosition = weightedPosition.add(northEast.centerOfMass.multiply(northEast.totalMass));
+//            }
+//            if (northWest.totalMass > 0) {
+//                massSum += northWest.totalMass;
+//                weightedPosition = weightedPosition.add(northWest.centerOfMass.multiply(northWest.totalMass));
+//            }
+//            if (southEast.totalMass > 0) {
+//                massSum += southEast.totalMass;
+//                weightedPosition = weightedPosition.add(southEast.centerOfMass.multiply(southEast.totalMass));
+//            }
+//            if (southWest.totalMass > 0) {
+//                massSum += southWest.totalMass;
+//                weightedPosition = weightedPosition.add(southWest.centerOfMass.multiply(southWest.totalMass));
+//            }
+		} else {
+			for(Particle p : particles) {
+				double mass = p.getMass();
+				massSum += mass;
+				weightedPosition = weightedPosition.add(p.getLocation().multiply(mass));
+			}
+		}
+		
+		totalMass = massSum;
+		if(massSum > 0) {
+			centerOfMass = weightedPosition.multiply(1.0 / massSum);
+		}
+	}
+	
+	public Vector2D getCenterOfMass() {
+		return this.centerOfMass;
+	}
+	
+	public double getTotalMass() {
+		return this.totalMass;
 	}
 }

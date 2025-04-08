@@ -1,11 +1,13 @@
 package com.lucasj.PhysicsSimulation.Simulation;
 
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import com.lucasj.PhysicsSimulation.Debug;
 import com.lucasj.PhysicsSimulation.Input.MouseHandler;
 import com.lucasj.PhysicsSimulation.Math.Quadtree;
 import com.lucasj.PhysicsSimulation.Math.Rectangle;
@@ -15,7 +17,11 @@ import com.lucasj.PhysicsSimulation.UI.Window;
 public class Simulation {
 	private Window window;
 	
-	public int population = 15;
+	public Window getWindow() {
+		return window;
+	}
+
+	public int population = 1000;
 	
 	// Instead of using an ArrayList for computations or a grid structure, i will use a Quadtree structure
 	private List<Particle> particles;
@@ -25,9 +31,16 @@ public class Simulation {
 	
 	//private Map<Point, List<Particle>> grid;
 	
-	public static final int DEFAULT_PARTICLE_SIZE = 32;
-	public static boolean GRAVITY = false;
-	public static final float ACCELERATION_GRAVITY = 9.81f;
+	public static final int DEFAULT_PARTICLE_SIZE = 16;
+	
+	public static boolean BOIDS_FLOCKING_ALGORITHM = true;
+	
+	public static boolean GRAVITY = true;
+	public static final float ACCELERATION_GRAVITY_DOWNWARD = 600;
+	public static final float ACCELERATION_GRAVITY_TOWARD_LARGER_MASSES = 1.0f;
+	public static final float CENTER_OF_MASS_RADIUS = 250;
+	public static final float USER_CONTROLLED_POWER = 25;
+	
 	public static final float ELASTICITY = 0.9f; // (No energy loss) 0 - 1 (immediate energy loss)
 	public static final float FRICTION = 0.05f;
 	
@@ -69,6 +82,8 @@ public class Simulation {
 			quadtree.insert(p);
 		}
 		
+		quadtree.calculateCenterOfMass();
+		
 		for (Particle p : particles) {
 			double range = p.getSize();
 			Rectangle rangeRect = new Rectangle(p.getLocation(), range, range);
@@ -91,7 +106,6 @@ public class Simulation {
 		for(Particle particle: particles) {
 			particle.render(g2d);
 		}
-		mouseHandler.render(g2d);
 	}
 	
 	public void populateParticles(int amount) {
@@ -124,6 +138,14 @@ public class Simulation {
 
 	public boolean addParticle(Particle e) {
 		return particles.add(e);
+	}
+
+	public Quadtree getQuadtree() {
+		return quadtree;
+	}
+
+	public MouseHandler getMouseHandler() {
+		return mouseHandler;
 	}
 	
 	
